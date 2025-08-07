@@ -64,8 +64,8 @@ class NativeExifPlugin: FlutterPlugin, MethodCallHandler {
           val stringValue = when {
               intTags.contains(key) -> {
                   when (rawValue) {
-                      is Int -> rawValue.toString()
-                      is String -> rawValue.toIntOrNull()?.toString()
+                      is Int -> rawValue
+                      is String -> rawValue.toIntOrNull()
                           ?: throw NumberFormatException("Invalid $key value. Expected Int or String that can be parsed as Int.")
                       else -> throw IllegalArgumentException("Invalid $key value type. Must be Int or String.")
                   }
