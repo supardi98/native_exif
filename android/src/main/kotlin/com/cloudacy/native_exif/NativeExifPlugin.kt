@@ -26,33 +26,55 @@ class NativeExifPlugin: FlutterPlugin, MethodCallHandler {
   }
 
   private fun setAttributes(exif: ExifInterface, values: Map<String, Any>) {
-    if (
-      values.containsKey(ExifInterface.TAG_GPS_LATITUDE) ||
-      values.containsKey(ExifInterface.TAG_GPS_LONGITUDE)
-    ) {
-      var lat = values[ExifInterface.TAG_GPS_LATITUDE] ?: exif.latLong?.get(0)
-      var long = values[ExifInterface.TAG_GPS_LONGITUDE] ?: exif.latLong?.get(1)
-      if (lat is String) {
-        lat = lat.toDouble()
-      } else if (lat !is Double) {
-        throw NumberFormatException("Invalid " + ExifInterface.TAG_GPS_LATITUDE + " value given. Must be of type Double or String.")
+      // Tag yang nilainya harus dikonversi ke Int
+      val intTags = setOf(
+          ExifInterface.TAG_ORIENTATION,
+          ExifInterface.TAG_ORF_PREVIEW_IMAGE_START,
+          ExifInterface.TAG_ORF_PREVIEW_IMAGE_LENGTH,
+          ExifInterface.TAG_IMAGE_WIDTH,
+          ExifInterface.TAG_IMAGE_LENGTH
+          // Tambahkan tag lain jika perlu
+      )
+  
+      if (
+          values.containsKey(ExifInterface.TAG_GPS_LATITUDE) ||
+          values.containsKey(ExifInterface.TAG_GPS_LONGITUDE)
+      ) {
+          var lat = values[ExifInterface.TAG_GPS_LATITUDE] ?: exif.latLong?.get(0)
+          var long = values[ExifInterface.TAG_GPS_LONGITUDE] ?: exif.latLong?.get(1)
+  
+          if (lat is String) {
+              lat = lat.toDouble()
+          } else if (lat !is Double) {
+              throw NumberFormatException("Invalid ${ExifInterface.TAG_GPS_LATITUDE} value. Must be Double or String.")
+          }
+  
+          if (long is String) {
+              long = long.toDouble()
+          } else if (long !is Double) {
+              throw NumberFormatException("Invalid ${ExifInterface.TAG_GPS_LONGITUDE} value. Must be Double or String.")
+          }
+  
+          exif.setLatLong(lat, long)
       }
-      if (long is String) {
-        long = long.toDouble()
-      } else if (long !is Double) {
-        throw NumberFormatException("Invalid " + ExifInterface.TAG_GPS_LONGITUDE + " value given. Must be of type Double or String.")
+  
+      for ((key, rawValue) in values) {
+          if (key == ExifInterface.TAG_GPS_LATITUDE || key == ExifInterface.TAG_GPS_LONGITUDE) continue
+  
+          val stringValue = when {
+              intTags.contains(key) -> {
+                  when (rawValue) {
+                      is Int -> rawValue.toString()
+                      is String -> rawValue.toIntOrNull()?.toString()
+                          ?: throw NumberFormatException("Invalid $key value. Expected Int or String that can be parsed as Int.")
+                      else -> throw IllegalArgumentException("Invalid $key value type. Must be Int or String.")
+                  }
+              }
+              else -> rawValue.toString()
+          }
+  
+          exif.setAttribute(key, stringValue)
       }
-
-      exif.setLatLong(lat, long)
-    }
-
-    for (value in values) {
-      if (value.key == ExifInterface.TAG_GPS_LATITUDE || value.key == ExifInterface.TAG_GPS_LONGITUDE) {
-        continue
-      }
-
-      exif.setAttribute(value.key, value.value as String)
-    }
   }
 
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
